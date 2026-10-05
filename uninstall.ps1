@@ -57,12 +57,12 @@ function Find-SaleblazersPath {
 
 Write-Banner
 
-Write-Host "Поиск установленной игры..." -ForegroundColor White
+Write-Host "Detecting Saleblazers game folder..." -ForegroundColor White
 $gamePath = Find-SaleblazersPath
 
 if (-not $gamePath) {
-    Write-Host "Укажите путь к папке игры (где находится Saleblazers.exe):" -ForegroundColor Yellow
-    $userInput = Read-Host "Путь к игре"
+    Write-Host "Please specify your Saleblazers folder (where Saleblazers.exe is located):" -ForegroundColor Yellow
+    $userInput = Read-Host "Game Path"
     if ($userInput) {
         $clean = $userInput.Trim('"').Trim()
         if (Test-Path (Join-Path $clean 'Saleblazers.exe')) {
@@ -74,11 +74,11 @@ if (-not $gamePath) {
 }
 
 if (-not $gamePath -or -not (Test-Path (Join-Path $gamePath 'Saleblazers.exe'))) {
-    Write-Host "[ОШИБКА] Папка игры не найдена." -ForegroundColor Red
+    Write-Host "[ERROR] Saleblazers game folder not found." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Найдена игра: $gamePath" -ForegroundColor Green
+Write-Host "Game folder found: $gamePath" -ForegroundColor Green
 Write-Host ""
 
 $winHttp = Join-Path $gamePath 'winhttp.dll'
@@ -87,38 +87,42 @@ $dotnetDir = Join-Path $gamePath 'dotnet'
 $bepDir = Join-Path $gamePath 'BepInEx'
 
 if (-not (Test-Path $winHttp) -and -not (Test-Path $bepDir)) {
-    Write-Host "Модлоадер BepInEx 6 не обнаружен в данной папке. Игра уже чистая." -ForegroundColor Yellow
+    Write-Host "BepInEx 6 modloader was not found in this folder. The game is already clean." -ForegroundColor Yellow
     exit 0
 }
 
-Write-Host "Выберите вариант удаления:" -ForegroundColor Yellow
-Write-Host "  [1] Отключить модлоадер (удалить Doorstop и Mod Menu, сохранив ваши моды в plugins)" -ForegroundColor White
-Write-Host "  [2] Полное удаление (стереть BepInEx, dotnet и загрузчик полностью)" -ForegroundColor White
-Write-Host "  [0] Отмена" -ForegroundColor Gray
+Write-Host "Select an uninstallation option:" -ForegroundColor Yellow
+Write-Host "  [1] Disable mod loader (removes Doorstop and Mod Menu, keeps your custom mods in plugins)" -ForegroundColor White
+Write-Host "  [2] Complete uninstall (completely removes BepInEx, dotnet, and Doorstop)" -ForegroundColor White
+Write-Host "  [0] Cancel" -ForegroundColor Gray
 Write-Host ""
 
-$choice = Read-Host "Ваш выбор (1, 2 или 0)"
+$choice = Read-Host "Your choice (1, 2, or 0)"
 
-if ($choice -eq '1') {
-    Write-Host "Отключение модлоадера..." -ForegroundColor White
-    if (Test-Path $winHttp) { Remove-Item $winHttp -Force; Write-Host "  * winhttp.dll удален" -ForegroundColor Gray }
-    if (Test-Path $doorstopCfg) { Remove-Item $doorstopCfg -Force; Write-Host "  * doorstop_config.ini удален" -ForegroundColor Gray }
-    if (Test-Path (Join-Path $bepDir 'plugins\Saleblazers.ModMenu.dll')) {
-        Remove-Item (Join-Path $bepDir 'plugins\Saleblazers.ModMenu.dll') -Force
-        Write-Host "  * Saleblazers.ModMenu.dll удален" -ForegroundColor Gray
+switch ($choice) {
+    '1' {
+        Write-Host ""
+        Write-Host "Disabling mod loader..." -ForegroundColor White
+        if (Test-Path $winHttp) { Remove-Item $winHttp -Force; Write-Host "  * Removed winhttp.dll" -ForegroundColor Gray }
+        if (Test-Path $doorstopCfg) { Remove-Item $doorstopCfg -Force; Write-Host "  * Removed doorstop_config.ini" -ForegroundColor Gray }
+        $menuDll = Join-Path $bepDir 'plugins\Saleblazers.ModMenu.dll'
+        if (Test-Path $menuDll) { Remove-Item $menuDll -Force; Write-Host "  * Removed Saleblazers.ModMenu.dll" -ForegroundColor Gray }
+        Write-Host ""
+        Write-Host "Done! The game will now launch in clean vanilla mode." -ForegroundColor Green
+        Write-Host "To re-enable, run install.bat again." -ForegroundColor Cyan
     }
-    Write-Host ""
-    Write-Host "Модлоадер успешно отключен! Игра вернулась к ванильному состоянию." -ForegroundColor Green
-    Write-Host "Ваши пользовательские моды и конфиги сохранены в папке BepInEx." -ForegroundColor Gray
-} elseif ($choice -eq '2') {
-    Write-Host "Полное удаление BepInEx..." -ForegroundColor White
-    if (Test-Path $winHttp) { Remove-Item $winHttp -Force }
-    if (Test-Path $doorstopCfg) { Remove-Item $doorstopCfg -Force }
-    if (Test-Path $dotnetDir) { Remove-Item $dotnetDir -Recurse -Force }
-    if (Test-Path $bepDir) { Remove-Item $bepDir -Recurse -Force }
-    Write-Host ""
-    Write-Host "Все файлы модов и BepInEx полностью удалены! Игра полностью чистая." -ForegroundColor Green
-} else {
-    Write-Host "Удаление отменено." -ForegroundColor Yellow
+    '2' {
+        Write-Host ""
+        Write-Host "Performing complete uninstall..." -ForegroundColor White
+        if (Test-Path $winHttp) { Remove-Item $winHttp -Force; Write-Host "  * Removed winhttp.dll" -ForegroundColor Gray }
+        if (Test-Path $doorstopCfg) { Remove-Item $doorstopCfg -Force; Write-Host "  * Removed doorstop_config.ini" -ForegroundColor Gray }
+        if (Test-Path $dotnetDir) { Remove-Item $dotnetDir -Recurse -Force; Write-Host "  * Removed dotnet folder" -ForegroundColor Gray }
+        if (Test-Path $bepDir) { Remove-Item $bepDir -Recurse -Force; Write-Host "  * Removed BepInEx folder" -ForegroundColor Gray }
+        Write-Host ""
+        Write-Host "Done! All modloader files have been completely removed." -ForegroundColor Green
+    }
+    default {
+        Write-Host "Operation cancelled." -ForegroundColor Yellow
+        exit 0
+    }
 }
-Write-Host ""

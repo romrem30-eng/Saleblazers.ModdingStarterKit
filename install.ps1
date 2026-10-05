@@ -60,15 +60,15 @@ function Find-SaleblazersPath {
 
 Write-Banner
 
-Write-Host "[1/3] Поиск папки игры Saleblazers..." -ForegroundColor White
+Write-Host "[1/3] Detecting Saleblazers game folder..." -ForegroundColor White
 $gamePath = Find-SaleblazersPath
 
 if (-not $gamePath) {
-    Write-Host "Не удалось автоматически определить папку с игрой." -ForegroundColor Yellow
-    Write-Host "Пожалуйста, укажите путь к папке игры (где находится Saleblazers.exe):" -ForegroundColor Yellow
-    Write-Host "Пример: C:\Program Files (x86)\Steam\steamapps\common\Saleblazers\Default" -ForegroundColor Gray
+    Write-Host "Could not automatically locate the game folder." -ForegroundColor Yellow
+    Write-Host "Please specify the path to your Saleblazers folder (where Saleblazers.exe is located):" -ForegroundColor Yellow
+    Write-Host "Example: C:\Program Files (x86)\Steam\steamapps\common\Saleblazers\Default" -ForegroundColor Gray
     Write-Host ""
-    $userInput = Read-Host "Путь к игре"
+    $userInput = Read-Host "Game Path"
     if ($userInput) {
         $clean = $userInput.Trim('"').Trim()
         if (Test-Path (Join-Path $clean 'Saleblazers.exe')) {
@@ -81,14 +81,14 @@ if (-not $gamePath) {
 
 if (-not $gamePath -or -not (Test-Path (Join-Path $gamePath 'Saleblazers.exe'))) {
     Write-Host ""
-    Write-Host "[ОШИБКА] Папка игры не найдена или не содержит Saleblazers.exe." -ForegroundColor Red
+    Write-Host "[ERROR] Saleblazers installation not found or folder does not contain Saleblazers.exe." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Папка игры найдена: $gamePath" -ForegroundColor Green
+Write-Host "Game folder found: $gamePath" -ForegroundColor Green
 Write-Host ""
 
-Write-Host "[2/3] Копирование компонентов BepInEx 6, Doorstop и Mod Menu..." -ForegroundColor White
+Write-Host "[2/3] Installing BepInEx 6 CoreCLR, Doorstop, and Mod Loader..." -ForegroundColor White
 $srcDir = $PSScriptRoot
 if ([string]::IsNullOrEmpty($srcDir)) { $srcDir = (Get-Location).Path }
 
@@ -96,7 +96,7 @@ if ([string]::IsNullOrEmpty($srcDir)) { $srcDir = (Get-Location).Path }
 $requiredSourceFiles = @('winhttp.dll', 'doorstop_config.ini')
 foreach ($f in $requiredSourceFiles) {
     if (-not (Test-Path (Join-Path $srcDir $f))) {
-        Write-Host "[ОШИБКА] Файл $f отсутствует в папке установщика!" -ForegroundColor Red
+        Write-Host "[ERROR] Essential file $f is missing in installer directory!" -ForegroundColor Red
         exit 1
     }
 }
@@ -104,13 +104,13 @@ foreach ($f in $requiredSourceFiles) {
 # 1. Doorstop loader
 Copy-Item (Join-Path $srcDir 'winhttp.dll') (Join-Path $gamePath 'winhttp.dll') -Force
 Copy-Item (Join-Path $srcDir 'doorstop_config.ini') (Join-Path $gamePath 'doorstop_config.ini') -Force
-Write-Host "  * Загрузчик Doorstop (winhttp.dll) установлен." -ForegroundColor Gray
+Write-Host "  * Installed Doorstop loader (winhttp.dll)." -ForegroundColor Gray
 
 # 2. .NET 6 Runtime
 if (Test-Path (Join-Path $srcDir 'dotnet')) {
     $destDotnet = Join-Path $gamePath 'dotnet'
     Copy-Item (Join-Path $srcDir 'dotnet') $destDotnet -Recurse -Force
-    Write-Host "  * Среда .NET 6 CoreCLR установлена." -ForegroundColor Gray
+    Write-Host "  * Installed .NET 6 CoreCLR runtime." -ForegroundColor Gray
 }
 
 # 3. BepInEx directories
@@ -119,12 +119,12 @@ New-Item -ItemType Directory -Path $destBep -Force | Out-Null
 
 if (Test-Path (Join-Path $srcDir 'BepInEx\core')) {
     Copy-Item (Join-Path $srcDir 'BepInEx\core') (Join-Path $destBep 'core') -Recurse -Force
-    Write-Host "  * Ядро BepInEx 6 IL2CPP скопировано." -ForegroundColor Gray
+    Write-Host "  * Installed BepInEx 6 IL2CPP core." -ForegroundColor Gray
 }
 
 if (Test-Path (Join-Path $srcDir 'BepInEx\interop')) {
     Copy-Item (Join-Path $srcDir 'BepInEx\interop') (Join-Path $destBep 'interop') -Recurse -Force
-    Write-Host "  * Интероп-библиотеки Unity 6 скопированы." -ForegroundColor Gray
+    Write-Host "  * Installed Unity 6 interop assemblies." -ForegroundColor Gray
 }
 
 # 4. Plugins (Mod Menu)
@@ -134,7 +134,7 @@ New-Item -ItemType Directory -Path $destPlugins -Force | Out-Null
 $modMenuSrc = Join-Path $srcDir 'BepInEx\plugins\Saleblazers.ModMenu.dll'
 if (Test-Path $modMenuSrc) {
     Copy-Item $modMenuSrc (Join-Path $destPlugins 'Saleblazers.ModMenu.dll') -Force
-    Write-Host "  * Встроенный менеджер модов (Saleblazers.ModMenu.dll) установлен." -ForegroundColor Gray
+    Write-Host "  * Installed built-in Mod Loader (Saleblazers.ModMenu.dll)." -ForegroundColor Gray
 }
 
 # 5. Config (if present)
@@ -145,14 +145,13 @@ if (Test-Path (Join-Path $srcDir 'BepInEx\config')) {
 }
 
 Write-Host ""
-Write-Host "[3/3] Установка успешно завершена!" -ForegroundColor Green
+Write-Host "[3/3] Installation completed successfully!" -ForegroundColor Green
 Write-Host ""
-Write-Host "Что теперь доступно в игре:" -ForegroundColor Yellow
-Write-Host "  * В главном меню появится нативная кнопка [МОДЫ]." -ForegroundColor White
-Write-Host "  * Рядом с версией игры в углу отображается метка [Modded]." -ForegroundColor White
-Write-Host "  * Включать и отключать моды можно прямо в меню игры." -ForegroundColor White
-Write-Host "  * Редактировать настройки (.cfg) можно прямо в игре на лету." -ForegroundColor White
+Write-Host "What is ready in-game:" -ForegroundColor Yellow
+Write-Host "  * Main menu shows the [MODS] button and active mods list." -ForegroundColor White
+Write-Host "  * Bottom corner shows the [Modded] version tag." -ForegroundColor White
+Write-Host "  * Toggle and configure mods directly from the menu." -ForegroundColor White
 Write-Host ""
-Write-Host "Чтобы установить любые другие моды (например, JEI), просто кладите их .dll в:" -ForegroundColor Cyan
+Write-Host "To install any additional mods (like JEI), place their .dll in:" -ForegroundColor Cyan
 Write-Host "  $destPlugins" -ForegroundColor Gray
 Write-Host ""
