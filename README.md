@@ -4,6 +4,8 @@ Pre-configured BepInEx 6 IL2CPP environment and modding template for **Saleblaze
 
 Because Saleblazers runs on Unity 6 IL2CPP x64, standard BepInEx 5 builds do not work. This starter kit provides everything configured and ready out of the box — the Doorstop loader, .NET 6 runtime, dumped interop assemblies, and an example mod template.
 
+📖 **Looking for full developer documentation?** Check out the [Comprehensive Modding Guide (GUIDE.md)](GUIDE.md) covering IL2CPP architecture, Harmony patches, uGUI / TextMeshPro runtime UI creation, input handling, and multiplayer safety.
+
 ---
 
 ## 🚀 For Players: How to Install
