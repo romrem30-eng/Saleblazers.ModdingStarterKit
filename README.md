@@ -35,12 +35,21 @@ The starter kit bundles `Saleblazers.ModMenu.dll` in `BepInEx/plugins/`:
 
 ## Installation Guide for Players
 
+### Automated Installation (1-Click)
 1. Download `Saleblazers.BepInExPack-v6.0.0.zip` from [Releases](https://github.com/romrem30-eng/Saleblazers.ModdingStarterKit/releases).
-2. Open your Saleblazers installation folder:
+2. Unpack the zip into any folder.
+3. Run `install.bat`.
+   - Automatically detects your Saleblazers installation across all Steam libraries (including Cyrillic/custom paths).
+   - Installs BepInEx 6 IL2CPP, Doorstop, .NET 6 runtime, and the in-game Mod Manager.
+4. Launch the game through Steam. The main menu will display `[Modded]` and a native `MODS` button!
+
+### Manual Installation (Without Scripts)
+If you prefer installing manually without running batch scripts:
+1. Download `Saleblazers.BepInExPack-v6.0.0.zip` from [Releases](https://github.com/romrem30-eng/Saleblazers.ModdingStarterKit/releases).
+2. Open your Saleblazers game folder:
    - In Steam, right-click **Saleblazers** -> **Manage** -> **Browse local files**.
-   - Navigate into the directory containing `Saleblazers.exe` (typically `Saleblazers/Default`).
-3. Extract the contents of the archive directly into this directory.
-   The structure must match:
+   - Open the directory containing `Saleblazers.exe` (typically `Saleblazers/Default`).
+3. Extract the contents of the archive directly into this directory:
    ```text
    Saleblazers/Default/
    ├── BepInEx/
@@ -55,7 +64,11 @@ The starter kit bundles `Saleblazers.ModMenu.dll` in `BepInEx/plugins/`:
    └── Saleblazers.exe
    ```
 4. Place any additional mod `.dll` files into `BepInEx/plugins/`.
-5. Launch the game through Steam. Confirm that `[Modded]` appears next to the version in the main menu.
+5. Launch the game through Steam.
+
+### Uninstallation
+- **Automated:** Run `uninstall.bat` from the zip folder or game folder. You can choose to either temporarily disable the loader (keeping your downloaded mods) or completely wipe all mod files back to clean vanilla.
+- **Manual:** Delete `winhttp.dll` and `doorstop_config.ini` from your `Saleblazers/Default/` folder. This instantly restores the vanilla game.
 
 ---
 
