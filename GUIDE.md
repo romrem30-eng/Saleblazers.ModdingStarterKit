@@ -17,6 +17,7 @@ Developer reference and walkthrough for creating mods for Saleblazers.
 8. [Building UI at Runtime (uGUI + TextMeshPro)](#8-building-ui-at-runtime-ugui--textmeshpro)
 9. [Cursor & Camera Lock Fix](#9-cursor--camera-lock-fix)
 10. [Multiplayer & Co-op Rules](#10-multiplayer--co-op-rules)
+11. [In-Game Mod Manager & Modded Verification](#11-in-game-mod-manager--modded-verification)
 
 ---
 
@@ -375,6 +376,36 @@ Saleblazers has full co-op support. Follow these guidelines so player saves and 
    Altering item stats, shop prices, or player stats in a multiplayer session will cause desyncs unless both host and clients run matching logic.
 3. **Do not modify save data schemas:**
    Adding custom serialized classes into player save files can break loading for vanilla games or when your mod is removed. Store custom mod data in separate `.json` files inside `BepInEx/config/`.
+
+---
+
+## 11. In-Game Mod Manager & Modded Verification
+
+The starter kit bundles `Saleblazers.ModMenu.dll` as a standard plugin. It serves as a reference implementation for integrating custom UI directly into vanilla game menus and managing runtime plugin states.
+
+### Boot Detection & [Modded] Indicator
+To confirm that BepInEx has successfully injected into the Unity 6 process:
+1. `winhttp.dll` loads `dotnet/coreclr.dll` and initializes `BepInEx.Core`.
+2. `Saleblazers.ModMenu` hooks `HRMainMenu.Start` and `HRMainMenu.RefreshButtons` using Harmony.
+3. The patch modifies `HRMainMenu.VersionName.text`, appending `<color=#F5D76E>[Modded]</color>`.
+4. A clone of the menu's `QuitGameButton` is instantiated as `HRMainMenu_ModsButton`, maintaining native visual styles and sound effects.
+
+### Live Configuration Reloading
+Instead of requiring players to restart the game to modify `.cfg` options:
+```csharp
+if (plugin.Instance is BasePlugin basePlugin && basePlugin.Config != null)
+{
+    basePlugin.Config.Reload();
+}
+```
+Calling `ConfigFile.Reload()` re-parses the configuration file from disk and immediately updates all bound `ConfigEntry<T>` values in memory.
+
+### Runtime Mod Toggling
+Disabling a plugin at runtime is achieved by renaming the file:
+- Disabled: `<PluginName>.dll.disabled`
+- Enabled: `<PluginName>.dll`
+
+BepInEx 6 IL2CPP only scans and executes files ending with `.dll`, ignoring `.disabled` suffixes on game boot.
 
 ---
 
