@@ -1,206 +1,250 @@
 # Saleblazers Modding Guide (Unity 6 / IL2CPP)
 
-Welcome to the **Saleblazers** modding documentation!  
-This guide explains the technical architecture of the game, how to inspect game code, how to build mods with BepInEx 6, how to hook game logic using Harmony, and how to create clean, responsive in-game UIs (uGUI / TextMeshPro) based on the architecture used in **Saleblazers.JEI**.
+Developer reference and walkthrough for creating mods for Saleblazers.
 
 ---
 
-## 📑 Table of Contents
-1. [Game Architecture & Environment](#1-game-architecture--environment)
-2. [Setting Up Your Workspace](#2-setting-up-your-workspace)
-3. [Decompiling & Inspecting Game Code](#3-decompiling--inspecting-game-code)
-4. [Writing Your First Mod (Lifecycle & MonoBehaviours)](#4-writing-your-first-mod-lifecycle--monobehaviours)
-5. [Hooking Game Logic with Harmony](#5-hooking-game-logic-with-harmony)
-6. [Accessing In-Game Systems & Singletons](#6-accessing-in-game-systems--singletons)
-7. [Building In-Game UI (uGUI & TextMeshPro)](#7-building-in-game-ui-ugui--textmeshpro)
-8. [Handling Input & Cursor Control](#8-handling-input--cursor-control)
-9. [Multiplayer & Co-op Guidelines](#9-multiplayer--co-op-guidelines)
+## Table of Contents
+1. [Tech Stack & Architecture](#1-tech-stack--architecture)
+2. [Project Setup in 2 Minutes](#2-project-setup-in-2-minutes)
+3. [Inspecting Game Code (ILSpy / dnSpy)](#3-inspecting-game-code-ilspy--dnspy)
+4. [Live Scene Inspection (UnityExplorer)](#4-live-scene-inspection-unityexplorer)
+5. [IL2CPP Specifics You Need to Know](#5-il2cpp-specifics-you-need-to-know)
+   - [Registering Custom Types (ClassInjector)](#registering-custom-types-classinjector)
+   - [Il2Cpp Collections vs System Collections](#il2cpp-collections-vs-system-collections)
+6. [Plugin Lifecycle & Config Files](#6-plugin-lifecycle--config-files)
+7. [Hooking Game Logic with Harmony](#7-hooking-game-logic-with-harmony)
+8. [Building UI at Runtime (uGUI + TextMeshPro)](#8-building-ui-at-runtime-ugui--textmeshpro)
+9. [Cursor & Camera Lock Fix](#9-cursor--camera-lock-fix)
+10. [Multiplayer & Co-op Rules](#10-multiplayer--co-op-rules)
 
 ---
 
-## 1. Game Architecture & Environment
+## 1. Tech Stack & Architecture
 
-Saleblazers uses:
-- **Engine:** Unity 6 (`6000.3.18.6209205`)
-- **Compilation:** **IL2CPP (x64)** (game code is compiled into native C++ machine code)
-- **Mod Loader:** **BepInEx 6.x (Unity IL2CPP build)**
-- **Interop Layer:** **Il2CppInterop** (exposes game C++ classes as callable C# classes)
+Saleblazers runs on:
+* **Engine:** Unity 6 (`6000.3.18.6209205`)
+* **Scripting Backend:** IL2CPP x64 (compiled to native C++ machine code)
+* **Mod Loader:** BepInEx 6 (IL2CPP build) + Il2CppInterop
+* **Target Framework:** .NET 6.0 (`net6.0`)
 
-> [!IMPORTANT]
-> Standard BepInEx 5 (Mono) will **NOT** work. Always use the pre-configured [Saleblazers.ModdingStarterKit](https://github.com/romrem30-eng/Saleblazers.ModdingStarterKit).
+Standard BepInEx 5 (Mono) does not work here. BepInEx 6 generates managed interop wrappers around native IL2CPP classes. You write standard C# code and interact with game objects as if they were regular managed types.
 
 ---
 
-## 2. Setting Up Your Workspace
+## 2. Project Setup in 2 Minutes
 
-### Prerequisites
-- [.NET 6.0 SDK](https://dotnet.microsoft.com/download/dotnet/6.0) or newer
-- An IDE (Visual Studio 2022, Rider, or VS Code)
-- A copy of [Saleblazers.ModdingStarterKit](https://github.com/romrem30-eng/Saleblazers.ModdingStarterKit)
+### Requirements
+* .NET 6.0 SDK or newer
+* Visual Studio 2022, Rider, or VS Code
 
-### Quick Project Setup
-Inside `templates/ExampleMod/ExampleMod.csproj`, all references are configured to point to relative BepInEx paths:
+### Using the Template
+Clone or download [Saleblazers.ModdingStarterKit](https://github.com/romrem30-eng/Saleblazers.ModdingStarterKit).
+
+Inside `templates/ExampleMod`, you have a pre-configured `.csproj`:
+
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>MyMod</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
+  <!-- Core BepInEx 6 references -->
   <ItemGroup>
-    <!-- BepInEx 6 & Harmony -->
-    <Reference Include="BepInEx.Core" Path="..\..\BepInEx\core\BepInEx.Core.dll" />
-    <Reference Include="BepInEx.Unity.IL2CPP" Path="..\..\BepInEx\core\BepInEx.Unity.IL2CPP.dll" />
-    <Reference Include="0Harmony" Path="..\..\BepInEx\core\0Harmony.dll" />
-    <Reference Include="Il2CppInterop.Runtime" Path="..\..\BepInEx\core\Il2CppInterop.Runtime.dll" />
-    <Reference Include="Il2Cppmscorlib" Path="..\..\BepInEx\interop\Il2Cppmscorlib.dll" />
+    <Reference Include="BepInEx.Core" HintPath="..\..\BepInEx\core\BepInEx.Core.dll" Private="false" />
+    <Reference Include="BepInEx.Unity.IL2CPP" HintPath="..\..\BepInEx\core\BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="..\..\BepInEx\core\0Harmony.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="..\..\BepInEx\core\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="..\..\BepInEx\interop\Il2Cppmscorlib.dll" Private="false" />
+  </ItemGroup>
 
-    <!-- Game & Unity Assemblies -->
-    <Reference Include="Assembly-CSharp" Path="..\..\BepInEx\interop\Assembly-CSharp.dll" />
-    <Reference Include="UnityEngine" Path="..\..\BepInEx\interop\UnityEngine.dll" />
-    <Reference Include="UnityEngine.CoreModule" Path="..\..\BepInEx\interop\UnityEngine.CoreModule.dll" />
-    <Reference Include="UnityEngine.UI" Path="..\..\BepInEx\interop\UnityEngine.UI.dll" />
-    <Reference Include="Unity.TextMeshPro" Path="..\..\BepInEx\interop\Unity.TextMeshPro.dll" />
+  <!-- Game and Unity wrappers -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp" HintPath="..\..\BepInEx\interop\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="..\..\BepInEx\interop\UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="..\..\BepInEx\interop\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="..\..\BepInEx\interop\UnityEngine.UI.dll" Private="false" />
+    <Reference Include="Unity.TextMeshPro" HintPath="..\..\BepInEx\interop\Unity.TextMeshPro.dll" Private="false" />
   </ItemGroup>
 </Project>
 ```
 
-To compile your mod:
+Build your plugin:
 ```bash
 dotnet build -c Release
 ```
-Copy the compiled DLL from `bin/Release/MyMod.dll` into your game's `Saleblazers/Default/BepInEx/plugins/` directory.
+Then copy `bin/Release/MyMod.dll` into your game's `Saleblazers/Default/BepInEx/plugins/` folder.
 
 ---
 
-## 3. Decompiling & Inspecting Game Code
+## 3. Inspecting Game Code (ILSpy / dnSpy)
 
-You do not need to disassemble native binaries with IDA/Ghidra. The Starter Kit already includes pre-dumped interop assemblies in `BepInEx/interop/`.
+All game classes, methods, and structures are pre-dumped in `BepInEx/interop/Assembly-CSharp.dll`.
 
-1. Download **[ILSpy](https://github.com/icsharpcode/ILSpy)** or **[dnSpyEx](https://github.com/dnSpyEx/dnSpy)**.
-2. Open `BepInEx/interop/Assembly-CSharp.dll`.
-3. Useful classes to inspect:
-   - `HeroPlayerCharacter`: The local player pawn (movement, interactions, combat).
-   - `HRGameInstance` & `BaseGameInstance`: Global game state, mouse cursor manager, scene transitions.
-   - `ItemData` / `ItemCatalog`: Item definitions, attributes, durability, pricing.
-   - `PlayerInventory`: Player inventory and container slots.
-   - `CraftingRecipe` / `CraftingManager`: Stations, crafting recipes, cooking pot inputs/outputs.
+Open this DLL in [ILSpy](https://github.com/icsharpcode/ILSpy) or [dnSpyEx](https://github.com/dnSpyEx/dnSpy).
+
+Key classes to look into:
+* `HeroPlayerCharacter`: The player pawn. Controls health, movement, camera look, attacks, interaction raycasts.
+* `HRGameInstance`: Top-level game instance manager. Scene switches, active world state, mouse cursor requests.
+* `PlayerInventory` & `ItemData`: Inventory slots, container interactions, item stats, prices, attributes.
+* `CraftingManager` & `CraftingRecipe`: Crafting stations, recipe definitions, cooking pot inputs/outputs.
+* `WorldManager`: World streaming, chunk loading, placed structures.
 
 ---
 
-## 4. Writing Your First Mod (Lifecycle & MonoBehaviours)
+## 4. Live Scene Inspection (UnityExplorer)
 
-A BepInEx 6 IL2CPP mod inherits from `BasePlugin`. Because IL2CPP handles garbage collection and memory differently than standard Mono, **always register custom `MonoBehaviour` classes using `AddComponent<T>()`** if you need `Update()` or frame-by-frame ticks.
+For real-time inspection of active GameObjects, components, and scene trees:
+1. Download **UnityExplorer (BepInEx 6 IL2CPP build)** from GitHub: `https://github.com/sinai-dev/UnityExplorer/releases`.
+2. Extract `sinai-dev-UnityExplorer.BepInEx.IL2CPP` into `BepInEx/plugins/`.
+3. Press **F7** in-game to open the inspector menu, search loaded objects, inspect private fields, and modify values on the fly.
+
+---
+
+## 5. IL2CPP Specifics You Need to Know
+
+### Registering Custom Types (ClassInjector)
+In IL2CPP, Unity's unmanaged engine code needs to know about any custom `MonoBehaviour` you create. If you do not register it before calling `AddComponent<T>()`, you will get a runtime error.
+
+Two rules for custom MonoBehaviours:
+1. Include an `IntPtr` constructor.
+2. Call `ClassInjector.RegisterTypeInIl2Cpp<T>()` in your plugin's `Load()` method.
 
 ```csharp
 using System;
+using Il2CppInterop.Runtime.Injection;
+using UnityEngine;
+
+public class MyModRunner : MonoBehaviour
+{
+    // Required constructor for IL2CPP wrapper interop
+    public MyModRunner(IntPtr ptr) : base(ptr) { }
+
+    private void Update()
+    {
+        // Runs every frame
+    }
+}
+
+// In your Plugin.Load():
+ClassInjector.RegisterTypeInIl2Cpp<MyModRunner>();
+AddComponent<MyModRunner>();
+```
+
+### Il2Cpp Collections vs System Collections
+Methods in `Assembly-CSharp` often return `Il2CppSystem.Collections.Generic.List<T>` or `Il2CppReferenceArray<T>` instead of standard .NET collections.
+
+```csharp
+// Iterating over an Il2Cpp list works with standard foreach:
+Il2CppSystem.Collections.Generic.List<ItemData> items = inventory.GetAllItems();
+foreach (var item in items)
+{
+    Plugin.Log.LogInfo(item.DisplayName);
+}
+
+// To use LINQ on Il2Cpp collections, convert them to standard arrays first:
+var managedArray = items.ToArray();
+var matching = managedArray.Where(x => x.BasePrice > 100).ToList();
+```
+
+---
+
+## 6. Plugin Lifecycle & Config Files
+
+BepInEx provides a built-in configuration system that automatically generates `.cfg` files in `BepInEx/config/`.
+
+```csharp
 using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
 using UnityEngine;
 
 namespace Saleblazers.MyMod
 {
-    [BepInPlugin("com.example.saleblazers.mymod", "My Mod", "1.0.0")]
+    [BepInPlugin(GUID, NAME, VERSION)]
     public class Plugin : BasePlugin
     {
+        public const string GUID = "com.author.saleblazers.mymod";
+        public const string NAME = "My Mod";
+        public const string VERSION = "1.0.0";
+
         internal static new ManualLogSource Log;
+        public static ConfigEntry<KeyCode> HotkeyConfig;
+        public static ConfigEntry<bool> EnableLoggingConfig;
 
         public override void Load()
         {
             Log = base.Log;
-            Log.LogInfo("Mod loaded!");
 
-            // Register Unity lifecycle runner
-            AddComponent<ModRunner>();
-        }
-    }
+            // Bind configuration entries
+            HotkeyConfig = Config.Bind("Controls", "ToggleKey", KeyCode.K, "Keyboard shortcut to toggle UI");
+            EnableLoggingConfig = Config.Bind("Debug", "VerboseLogs", false, "Print detailed logs to console");
 
-    public class ModRunner : MonoBehaviour
-    {
-        // Required for Il2CppInterop MonoBehaviours
-        public ModRunner(IntPtr ptr) : base(ptr) { }
-
-        private void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.F8))
-            {
-                Plugin.Log.LogInfo("F8 key pressed in game!");
-            }
+            Log.LogInfo($"{NAME} initialized. Toggle hotkey set to {HotkeyConfig.Value}");
         }
     }
 }
 ```
-
-> [!NOTE]
-> In IL2CPP, your custom `MonoBehaviour` classes must declare a constructor taking `(IntPtr ptr) : base(ptr)` so the interop layer can bind the unmanaged C++ object to your managed C# class.
 
 ---
 
-## 5. Hooking Game Logic with Harmony
+## 7. Hooking Game Logic with Harmony
 
-You can intercept, alter, or replace existing game methods using Harmony.
+Harmony lets you modify game behavior without touching executable files.
 
-### Example: Hooking an Item Pickup or Method Call
+### Prefix (Run before original method, optional cancel)
 ```csharp
 using HarmonyLib;
 
-[HarmonyPatch(typeof(HeroPlayerCharacter), "OnItemPickedUp")]
-internal static class Patch_OnItemPickedUp
+// Hooking an attack event on the player
+[HarmonyPatch(typeof(HeroPlayerCharacter), "PrimaryMouseEvent", new[] { typeof(bool) })]
+internal static class Patch_Attack
 {
-    // Prefix: runs before the original method. Return false to cancel the original execution!
-    private static void Prefix(HeroPlayerCharacter __instance, ItemData item)
+    // Return false to stop the game from running the original method
+    private static bool Prefix(bool isPressed)
     {
-        if (item != null)
-        {
-            Plugin.Log.LogInfo($"Player picked up: {item.DisplayName}");
-        }
-    }
+        if (MyModUI.IsOpen)
+            return false; // Prevent weapon swing when clicking on mod UI
 
-    // Postfix: runs after the original method
-    private static void Postfix(HeroPlayerCharacter __instance)
-    {
-        // ...
+        return true;
     }
 }
 ```
 
-Apply patches in your `Plugin.Load()`:
+### Postfix (Run after original method, inspect or alter results)
 ```csharp
-var harmony = new Harmony("com.example.saleblazers.mymod");
+[HarmonyPatch(typeof(HeroPlayerCharacter), "OnItemPickedUp")]
+internal static class Patch_Pickup
+{
+    private static void Postfix(HeroPlayerCharacter __instance, ItemData item)
+    {
+        if (item != null)
+        {
+            Plugin.Log.LogInfo($"Picked up: {item.DisplayName} (ID: {item.ItemID})");
+        }
+    }
+}
+```
+
+Apply all patches during `Load()`:
+```csharp
+var harmony = new Harmony(GUID);
 harmony.PatchAll();
 ```
 
 ---
 
-## 6. Accessing In-Game Systems & Singletons
+## 8. Building UI at Runtime (uGUI + TextMeshPro)
 
-### Finding the Local Player
-```csharp
-var player = UnityEngine.Object.FindObjectOfType<HeroPlayerCharacter>();
-if (player != null)
-{
-    var health = player.CurrentHealth;
-}
-```
+Instead of using slow legacy `OnGUI()` or packing asset bundles, you can create sharp uGUI interfaces in pure C# at runtime. This is the exact approach used by **Saleblazers.JEI**.
 
-### Checking if the Player is in Gameplay vs Menu
-```csharp
-var gi = UnityEngine.Object.FindObjectOfType<HRGameInstance>();
-bool inGame = gi != null && gi.IsPlayingWorld; // Player is loaded in the world
-```
-
----
-
-## 7. Building In-Game UI (uGUI & TextMeshPro)
-
-Rather than using legacy `OnGUI()` (which is slow and lacks modern styling), Saleblazers uses Unity's **uGUI Canvas** and **TextMeshPro (TMP)**.
-
-Here is how **Saleblazers.JEI** builds its entire interface programmatically at runtime without external asset bundles:
-
-### 1. Reusable 1x1 White Sprite
-Unity 6 uGUI `Image` components render cleanest when assigned a white sprite:
+### 1. Generating a Clean 1x1 Sprite for Backgrounds
+Unity 6 uGUI `Image` components need a sprite to render solid colors cleanly:
 ```csharp
 private static Sprite _whiteSprite;
 public static Sprite WhiteSprite
@@ -217,123 +261,121 @@ public static Sprite WhiteSprite
 }
 ```
 
-### 2. Borrowing Live TextMeshPro Fonts
-Instead of shipping a `.ttf` or TMP font asset in your mod, borrow the active game font from the scene:
+### 2. Borrowing the In-Game Font
+Do not bundle custom `.ttf` or `.asset` fonts. Borrow the game font that is already loaded in memory:
 ```csharp
 public static TMP_FontAsset GetGameFont()
 {
-    // 1. Try finding a live TextMeshProUGUI in the scene
+    // Find an active TextMeshProUGUI in the scene
     var liveText = UnityEngine.Object.FindObjectOfType<TextMeshProUGUI>();
     if (liveText != null && liveText.font != null)
         return liveText.font;
 
-    // 2. Fall back to default font asset
     return TMP_Settings.defaultFontAsset;
 }
 ```
 
-### 3. Creating a Root Canvas
+### 3. Setting Up Canvas & Panel Hierarchy
 ```csharp
-var canvasGo = new GameObject("MyMod_Canvas");
-UnityEngine.Object.DontDestroyOnLoad(canvasGo);
-
-var canvas = canvasGo.AddComponent<Canvas>();
-canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-canvas.sortingOrder = 9999; // Ensure it renders on top
-
-var scaler = canvasGo.AddComponent<CanvasScaler>();
-scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-scaler.referenceResolution = new Vector2(1920, 1080);
-scaler.matchWidthOrHeight = 0.5f;
-
-var raycaster = canvasGo.AddComponent<GraphicRaycaster>();
-```
-
-### 4. Creating a Panel with Background and Text
-```csharp
-// Panel Background
-var panelGo = new GameObject("Panel");
-panelGo.transform.SetParent(canvasGo.transform, false);
-
-var rect = panelGo.AddComponent<RectTransform>();
-rect.anchorMin = new Vector2(0.5f, 0.5f);
-rect.anchorMax = new Vector2(0.5f, 0.5f);
-rect.sizeDelta = new Vector2(400, 300);
-
-var img = panelGo.AddComponent<Image>();
-img.sprite = WhiteSprite;
-img.color = new Color(0.1f, 0.1f, 0.12f, 0.95f); // Dark translucent background
-
-// TextMeshPro Label
-var textGo = new GameObject("Title");
-textGo.transform.SetParent(panelGo.transform, false);
-
-var textRect = textGo.AddComponent<RectTransform>();
-textRect.anchorMin = new Vector2(0, 1);
-textRect.anchorMax = new Vector2(1, 1);
-textRect.pivot = new Vector2(0.5f, 1f);
-textRect.sizeDelta = new Vector2(0, 40);
-
-var tmp = textGo.AddComponent<TextMeshProUGUI>();
-tmp.font = GetGameFont();
-tmp.fontSize = 20;
-tmp.alignment = TextAlignmentOptions.Center;
-tmp.text = "Saleblazers Custom Mod Panel";
-tmp.color = Color.white;
-```
-
----
-
-## 8. Handling Input & Cursor Control
-
-In first-person games like Saleblazers, the game locks the cursor to the center of the screen (`CursorLockMode.Locked`) and hides it while in gameplay.
-
-If your mod displays a modal window or menu:
-
-### Unlocking the Cursor
-You can unlock the cursor while your UI is open:
-```csharp
-Cursor.visible = true;
-Cursor.lockState = CursorLockMode.None;
-```
-
-### Preventing Camera Rotation & Weapon Attacks While UI is Open
-To stop mouse movement from spinning the camera or swinging tools while interacting with your UI, hook `HeroPlayerCharacter` input methods with Harmony:
-
-```csharp
-[HarmonyPatch(typeof(HeroPlayerCharacter), "HandleMouseLookX")]
-internal static class Patch_BlockLookX
+public static void CreateUI()
 {
-    private static bool Prefix() => !MyUi.IsOpen; // Returns false if UI is open, blocking camera rotation
-}
+    // 1. Root Canvas
+    var canvasGo = new GameObject("Mod_Canvas");
+    UnityEngine.Object.DontDestroyOnLoad(canvasGo);
 
-[HarmonyPatch(typeof(HeroPlayerCharacter), "HandleMouseLookY")]
-internal static class Patch_BlockLookY
-{
-    private static bool Prefix() => !MyUi.IsOpen;
-}
+    var canvas = canvasGo.AddComponent<Canvas>();
+    canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+    canvas.sortingOrder = 9999; // Draw over in-game HUD
 
-[HarmonyPatch(typeof(HeroPlayerCharacter), "PrimaryMouseEvent")]
-internal static class Patch_BlockClickAttack
-{
-    private static bool Prefix() => !MyUi.IsOpen; // Prevents weapon swing when clicking buttons
+    var scaler = canvasGo.AddComponent<CanvasScaler>();
+    scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+    scaler.referenceResolution = new Vector2(1920, 1080);
+    scaler.matchWidthOrHeight = 0.5f;
+
+    canvasGo.AddComponent<GraphicRaycaster>();
+
+    // 2. Background Window
+    var windowGo = new GameObject("Window");
+    windowGo.transform.SetParent(canvasGo.transform, false);
+
+    var rect = windowGo.AddComponent<RectTransform>();
+    rect.anchorMin = new Vector2(0.5f, 0.5f);
+    rect.anchorMax = new Vector2(0.5f, 0.5f);
+    rect.sizeDelta = new Vector2(500, 400);
+
+    var img = windowGo.AddComponent<Image>();
+    img.sprite = WhiteSprite;
+    img.color = new Color(0.12f, 0.12f, 0.15f, 0.95f);
+
+    // 3. Header Label
+    var titleGo = new GameObject("Title");
+    titleGo.transform.SetParent(windowGo.transform, false);
+
+    var titleRect = titleGo.AddComponent<RectTransform>();
+    titleRect.anchorMin = new Vector2(0, 1);
+    titleRect.anchorMax = new Vector2(1, 1);
+    titleRect.pivot = new Vector2(0.5f, 1f);
+    titleRect.sizeDelta = new Vector2(0, 45);
+
+    var tmp = titleGo.AddComponent<TextMeshProUGUI>();
+    tmp.font = GetGameFont();
+    tmp.fontSize = 22;
+    tmp.alignment = TextAlignmentOptions.Center;
+    tmp.text = "My Custom Mod Menu";
+    tmp.color = Color.white;
 }
 ```
 
 ---
 
-## 9. Multiplayer & Co-op Guidelines
+## 9. Cursor & Camera Lock Fix
 
-Saleblazers supports online co-op. When developing mods, keep these principles in mind:
+In first-person mode, Saleblazers locks the mouse to the center of the screen (`CursorLockMode.Locked`) and hides it.
 
-1. **Client-Side vs Synchronized:**
-   - Visual enhancements, inventory helpers, recipe viewers (like JEI), UI tweaks, and camera mods are completely client-safe.
-   - Gameplay mechanics (changing item prices, modifying damage, spawning entities) should only be tested in singleplayer or when all players in the session have the mod installed.
-2. **Do Not Break Host Save States:**
-   - Modifying item IDs or writing non-standard data into save files can corrupt multiplayer worlds for players who do not run the mod.
-3. **Respect Fair Play:**
-   - Do not create intrusive griefing tools or multiplayer cheats. Help foster a welcoming, creative modding community!
+When your mod menu opens, you need to unlock the mouse and prevent the camera and weapon attacks from triggering while clicking buttons:
+
+```csharp
+// 1. Toggle mouse visibility
+public static void SetMenuOpen(bool open)
+{
+    Cursor.visible = open;
+    Cursor.lockState = open ? CursorLockMode.None : CursorLockMode.Locked;
+}
+
+// 2. Block camera rotation while menu is open
+[HarmonyPatch(typeof(HeroPlayerCharacter), "HandleMouseLookX", new[] { typeof(float) })]
+internal static class BlockLookX
+{
+    private static bool Prefix() => !MyMenu.IsOpen;
+}
+
+[HarmonyPatch(typeof(HeroPlayerCharacter), "HandleMouseLookY", new[] { typeof(float) })]
+internal static class BlockLookY
+{
+    private static bool Prefix() => !MyMenu.IsOpen;
+}
+
+// 3. Block weapon attack while clicking UI
+[HarmonyPatch(typeof(HeroPlayerCharacter), "PrimaryMouseEvent", new[] { typeof(bool) })]
+internal static class BlockAttack
+{
+    private static bool Prefix() => !MyMenu.IsOpen;
+}
+```
 
 ---
 
-*Happy Modding! If you have questions or build a mod, share it in the official Saleblazers Discord `#mods` channel.*
+## 10. Multiplayer & Co-op Rules
+
+Saleblazers has full co-op support. Follow these guidelines so player saves and host sessions do not get corrupted:
+
+1. **Client-side mods are always safe:**
+   UI mods, recipe lookups (like JEI), visual indicators, and camera tools do not affect other players or world data.
+2. **Gameplay modifiers require caution:**
+   Altering item stats, shop prices, or player stats in a multiplayer session will cause desyncs unless both host and clients run matching logic.
+3. **Do not modify save data schemas:**
+   Adding custom serialized classes into player save files can break loading for vanilla games or when your mod is removed. Store custom mod data in separate `.json` files inside `BepInEx/config/`.
+
+---
+
+*Questions or showcase? Join the discussion in the official Saleblazers Discord `#mods` channel.*
