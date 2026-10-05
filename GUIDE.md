@@ -8,16 +8,15 @@ Developer reference and walkthrough for creating mods for Saleblazers.
 1. [Tech Stack & Architecture](#1-tech-stack--architecture)
 2. [Project Setup in 2 Minutes](#2-project-setup-in-2-minutes)
 3. [Inspecting Game Code (ILSpy / dnSpy)](#3-inspecting-game-code-ilspy--dnspy)
-4. [Live Scene Inspection (UnityExplorer)](#4-live-scene-inspection-unityexplorer)
-5. [IL2CPP Specifics You Need to Know](#5-il2cpp-specifics-you-need-to-know)
+4. [IL2CPP Specifics You Need to Know](#4-il2cpp-specifics-you-need-to-know)
    - [Registering Custom Types (ClassInjector)](#registering-custom-types-classinjector)
    - [Il2Cpp Collections vs System Collections](#il2cpp-collections-vs-system-collections)
-6. [Plugin Lifecycle & Config Files](#6-plugin-lifecycle--config-files)
-7. [Hooking Game Logic with Harmony](#7-hooking-game-logic-with-harmony)
-8. [Building UI at Runtime (uGUI + TextMeshPro)](#8-building-ui-at-runtime-ugui--textmeshpro)
-9. [Cursor & Camera Lock Fix](#9-cursor--camera-lock-fix)
-10. [Multiplayer & Co-op Rules](#10-multiplayer--co-op-rules)
-11. [In-Game Mod Manager & Modded Verification](#11-in-game-mod-manager--modded-verification)
+5. [Plugin Lifecycle & Config Files](#5-plugin-lifecycle--config-files)
+6. [Hooking Game Logic with Harmony](#6-hooking-game-logic-with-harmony)
+7. [Building UI at Runtime (uGUI + TextMeshPro)](#7-building-ui-at-runtime-ugui--textmeshpro)
+8. [Cursor & Camera Lock Fix](#8-cursor--camera-lock-fix)
+9. [Multiplayer & Co-op Rules](#9-multiplayer--co-op-rules)
+10. [In-Game Mod Manager & Modded Verification](#10-in-game-mod-manager--modded-verification)
 
 ---
 
@@ -97,16 +96,7 @@ Key classes to look into:
 
 ---
 
-## 4. Live Scene Inspection (UnityExplorer)
-
-For real-time inspection of active GameObjects, components, and scene trees:
-1. Download **UnityExplorer (BepInEx 6 IL2CPP build)** from GitHub: `https://github.com/sinai-dev/UnityExplorer/releases`.
-2. Extract `sinai-dev-UnityExplorer.BepInEx.IL2CPP` into `BepInEx/plugins/`.
-3. Press **F7** in-game to open the inspector menu, search loaded objects, inspect private fields, and modify values on the fly.
-
----
-
-## 5. IL2CPP Specifics You Need to Know
+## 4. IL2CPP Specifics You Need to Know
 
 ### Registering Custom Types (ClassInjector)
 In IL2CPP, Unity's unmanaged engine code needs to know about any custom `MonoBehaviour` you create. If you do not register it before calling `AddComponent<T>()`, you will get a runtime error.
@@ -154,7 +144,7 @@ var matching = managedArray.Where(x => x.BasePrice > 100).ToList();
 
 ---
 
-## 6. Plugin Lifecycle & Config Files
+## 5. Plugin Lifecycle & Config Files
 
 BepInEx provides a built-in configuration system that automatically generates `.cfg` files in `BepInEx/config/`.
 
@@ -194,7 +184,7 @@ namespace Saleblazers.MyMod
 
 ---
 
-## 7. Hooking Game Logic with Harmony
+## 6. Hooking Game Logic with Harmony
 
 Harmony lets you modify game behavior without touching executable files.
 
@@ -240,7 +230,7 @@ harmony.PatchAll();
 
 ---
 
-## 8. Building UI at Runtime (uGUI + TextMeshPro)
+## 7. Building UI at Runtime (uGUI + TextMeshPro)
 
 Instead of using slow legacy `OnGUI()` or packing asset bundles, you can create sharp uGUI interfaces in pure C# at runtime. This is the exact approach used by **Saleblazers.JEI**.
 
@@ -329,7 +319,7 @@ public static void CreateUI()
 
 ---
 
-## 9. Cursor & Camera Lock Fix
+## 8. Cursor & Camera Lock Fix
 
 In first-person mode, Saleblazers locks the mouse to the center of the screen (`CursorLockMode.Locked`) and hides it.
 
@@ -366,7 +356,7 @@ internal static class BlockAttack
 
 ---
 
-## 10. Multiplayer & Co-op Rules
+## 9. Multiplayer & Co-op Rules
 
 Saleblazers has full co-op support. Follow these guidelines so player saves and host sessions do not get corrupted:
 
@@ -379,7 +369,7 @@ Saleblazers has full co-op support. Follow these guidelines so player saves and 
 
 ---
 
-## 11. In-Game Mod Manager & Modded Verification
+## 10. In-Game Mod Manager & Modded Verification
 
 The starter kit bundles `Saleblazers.ModMenu.dll` as a standard plugin. It serves as a reference implementation for integrating custom UI directly into vanilla game menus and managing runtime plugin states.
 
